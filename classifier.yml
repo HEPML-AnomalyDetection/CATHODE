@@ -1,0 +1,4 @@
+layers: [64, 64, 64]
+loss: binary_crossentropy
+optimizer: adam
+learning_rate: 1e-3
