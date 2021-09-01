@@ -2,7 +2,7 @@
 
 A new anomaly detection algorithm that brings together the best from ANODE and CWoLa. Train a density estimator on sidebands, sample artificial datapoints in the signal region, train a classifier to distinguish artificial and real signal region data and then use the same classifier for classifying signal (the anomaly) from background.
 
-To see the definition of signal region and sideband region please see: [SR-SB](SR-SB.pdf)
+To see the definition of signal region and sideband region please see: [SB-SR](SB-SR.pdf)
 
 ![performance comparison](performance_comparison.png)
 
