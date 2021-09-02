@@ -38,7 +38,7 @@ The corresponding script is run_ANODE_training.py
 
 ## Mix data and samples
 
-The corresponding script is run_classifer_data_creation.py
+The corresponding script is run_classifier_data_creation.py
 
 ## Train the classifier
 

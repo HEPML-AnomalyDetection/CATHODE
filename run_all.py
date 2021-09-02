@@ -6,8 +6,8 @@ import argparse
 import numpy as np
 
 from run_ANODE_training import main as train_DE
-from run_classifer_data_creation import main as create_data
-from run_classifer_training import main as train_classifier
+from run_classifier_data_creation import main as create_data
+from run_classifier_training import main as train_classifier
 from run_ANODE_evaluation import main as eval_ANODE
 from evaluation_utils import full_single_evaluation, classic_ANODE_eval, minimum_val_loss_model_evaluation
 
