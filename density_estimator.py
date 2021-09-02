@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 import yaml
 import flows as fnn
-import mdn
 
 
 class DensityEstimator:
@@ -43,7 +42,7 @@ class DensityEstimator:
         raise DensityEstimator.Unknown(f'Unknown model "{name}" requested')
 
     def __init__(self, filename, eval_mode=False, load_path=None,
-                 device=torch.device("cpu"), verbose=False):
+                 device=torch.device("cpu"), verbose=False, **kwargs):
         # with open(filename, 'r') as stream:
         #     params = yaml.safe_load(stream)
 
