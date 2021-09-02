@@ -2,7 +2,7 @@ import os
 import argparse
 import torch
 from data_handler import LHCORD_data_handler
-from ANODE_model import build_MAF
+from density_estimator import DensityEstimator
 from ANODE_evaluation_utils import compute_ANODE_score
 
 parser = argparse.ArgumentParser(
@@ -69,13 +69,13 @@ def main(args):
 
     init_inner_model_list = []
     for model_path in args.inner_models:
-        init_inner_model_list.append(build_MAF(args.config_file, eval_mode=True,
-                                               load_path=model_path, device=device)[0])
+        init_inner_model_list.append(DensityEstimator(args.config_file, eval_mode=True,
+                                                      load_path=model_path, device=device)[0])
 
     init_outer_model_list = []
     for model_path in args.outer_models:
-        init_outer_model_list.append(build_MAF(args.config_file, eval_mode=True,
-                                               load_path=model_path, device=device)[0])
+        init_outer_model_list.append(DensityEstimator(args.config_file, eval_mode=True,
+                                                      load_path=model_path, device=device)[0])
 
     preds, sig_labels, preds_extrasig = compute_ANODE_score(init_inner_model_list,
                                                             init_outer_model_list, data, device,
