@@ -4,7 +4,6 @@ import torch
 import os
 from tqdm import tqdm
 import flows as fnn
-import mdn
 
 
 def compute_likelihoods(model_list, data_loader, minval, maxval, meanval, stdval, device, verbose=False):
@@ -29,7 +28,7 @@ def compute_likelihoods(model_list, data_loader, minval, maxval, meanval, stdval
             loss_vals_list = []
             for model in model_list:
                 loss_vals_raw = model.log_probs(data, cond_data).flatten()
-                loss_vals_list.append(loss_vals_raw + torch.sum(torch.log(2 * (1 + torch.cosh(data * stdval + meanval)) / (stdval * (maxval - minval))), dim=1)) # stole this line from David's code ## TODO check if correct
+                loss_vals_list.append(loss_vals_raw + torch.sum(torch.log(2 * (1 + torch.cosh(data * stdval + meanval)) / (stdval * (maxval - minval))), dim=1))
             loss_vals = torch.stack(loss_vals_list)
 
             if len(model_list) > 1: 
