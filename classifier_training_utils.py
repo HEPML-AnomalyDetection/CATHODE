@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from keras.callbacks import Callback
-from classifier_tf import build_classifier
+from classifier import build_classifier
 from sklearn.utils import class_weight
 
 
