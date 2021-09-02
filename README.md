@@ -67,7 +67,7 @@ will plot the resulting SIC curve to file.
 
 The most up-to-date command for the ANODE benchmark is:
 ```
-python run_all.py --no_extra_signal --data_dir new_separated_data/ --mode ANODE
+python run_all.py --no_extra_signal --data_dir separated_data/ --mode ANODE
 ```
 
 ### CWoLa
