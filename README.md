@@ -12,7 +12,7 @@ Follow the instructions below to reproduce the results and/or perform further st
 If you use **CATHODE** for your research, please cite:  
 - *"Classifying Anomalies THrough Outer Density Estimation (CATHODE)"*,  
 By Anna Hallin, Joshua Isaacson, Gregor Kasieczka, Claudius Krause, Benjamin Nachman,
-Tobias Quadfasel, Matthias Schlaffer, David Shih, and Manuel Sommerhalder. 
+Tobias Quadfasel, Matthias Schlaffer, David Shih, and Manuel Sommerhalder. <br>
 [arXiv:2109.00546](https://arxiv.org/abs/2109.00546). 
 
 ## Data preparation
