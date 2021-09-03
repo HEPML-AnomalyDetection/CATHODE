@@ -1,12 +1,19 @@
 # CATHODE
 
-A new anomaly detection algorithm that brings together the best from ANODE and CWoLa. Train a density estimator on sidebands, sample artificial datapoints in the signal region, train a classifier to distinguish artificial and real signal region data and then use the same classifier for classifying signal (the anomaly) from background.
+A new anomaly detection algorithm that brings together the best from ANODE and CWoLa. Train a density estimator on sidebands, sample artificial datapoints in the signal region, train a classifier to distinguish artificial and real signal region data and then use the same classifier for classifying signal (the anomaly) from background. 
 
 To see the definition of signal region and sideband region please see: [SB-SR](SB-SR.pdf)
 
 ![performance comparison](performance_comparison.png)
 
-Follow the instructions below to reproduce the results and/or perform further studies. The steps "Train the ANODE model", "Mix data and samples", "Train the classifier", and "Evaluation" can be called separately as described below. Alternatively, the script `run_all.py` can be used to run the full pipeline in one call. 
+Follow the instructions below to reproduce the results and/or perform further studies. The steps "Train the ANODE model", "Mix data and samples", "Train the classifier", and "Evaluation" can be called separately as described below. Alternatively, the script `run_all.py` can be used to run the full pipeline in one call.
+
+## Citation
+If you use **CATHODE** for your research, please cite:  
+- *"Classifying Anomalies THrough Outer Density Estimation (CATHODE)"*,  
+By Anna Hallin, Joshua Isaacson, Gregor Kasieczka, Claudius Krause, Benjamin Nachman,
+Tobias Quadfasel, Matthias Schlaffer, David Shih, and Manuel Sommerhalder. 
+[arXiv:2109.00546](https://arxiv.org/abs/2109.00546). 
 
 ## Data preparation
 
