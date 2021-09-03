@@ -1,37 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-- family-names: "Hallin"
-  given-names: "Anna"
-  orcid: "https://orcid.org/0000-0002-1551-814X"
-- family-names: "Isaacson"
-  given-names: "Joshua"
-  orcid: "https://orcid.org/0000-0001-6164-1707"
-- family-names: "Kasieczka"
-  given-names: "Gregor"
-- family-names: "Krause"
-  given-names: "Claudius"
-  orcid: "https://orcid.org/0000-0003-0924-3036"
-- family-names: "Nachman"
-  given-names: "Benjamin"
-  orcid: "https://orcid.org/0000-0003-1024-0932"
-- family-names: "Quadfasel"
-  given-names: "Tobias"
-- family-names: "Schlaffer"
-  given-names: "Matthias"
-  orcid: "https://orcid.org/0000-0001-6426-5946"
-- family-names: "Shih"
-  given-names: "David"
-  orcid: "https://orcid.org/0000-0003-3408-3871"
-- family-names "Sommerhalder"
-  given-names: "Manuel"
-title: "CATHODE"
-version: 1.0.0
-date-released: 2021-09-03
-url: "https://github.com/HEPML-AnomalyDetection/CATHODE"
-preferred-citation:
-  type: article
-  authors:
   - family-names: "Hallin"
     given-names: "Anna"
     orcid: "https://orcid.org/0000-0002-1551-814X"
@@ -54,8 +23,39 @@ preferred-citation:
   - family-names: "Shih"
     given-names: "David"
     orcid: "https://orcid.org/0000-0003-3408-3871"
-  - family-names "Sommerhalder"
+  - family-names: "Sommerhalder"
     given-names: "Manuel"
+title: "CATHODE"
+version: 1.0.0
+date-released: 2021-09-03
+url: "https://github.com/HEPML-AnomalyDetection/CATHODE"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Hallin"
+      given-names: "Anna"
+      orcid: "https://orcid.org/0000-0002-1551-814X"
+    - family-names: "Isaacson"
+      given-names: "Joshua"
+      orcid: "https://orcid.org/0000-0001-6164-1707"
+    - family-names: "Kasieczka"
+      given-names: "Gregor"
+    - family-names: "Krause"
+      given-names: "Claudius"
+      orcid: "https://orcid.org/0000-0003-0924-3036"
+    - family-names: "Nachman"
+      given-names: "Benjamin"
+      orcid: "https://orcid.org/0000-0003-1024-0932"
+    - family-names: "Quadfasel"
+      given-names: "Tobias"
+    - family-names: "Schlaffer"
+      given-names: "Matthias"
+      orcid: "https://orcid.org/0000-0001-6426-5946"
+    - family-names: "Shih"
+      given-names: "David"
+      orcid: "https://orcid.org/0000-0003-3408-3871"
+    - family-names: "Sommerhalder"
+      given-names: "Manuel"
   title: "Classifying Anomalies THrough Outer Density Estimation (CATHODE)"
   year: 2021
   eprint: 2109.00546
