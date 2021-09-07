@@ -17,6 +17,7 @@ authors:
     orcid: "https://orcid.org/0000-0003-1024-0932"
   - family-names: "Quadfasel"
     given-names: "Tobias"
+    orcid: "https://orcid.org/0000-0003-2360-351X"
   - family-names: "Schlaffer"
     given-names: "Matthias"
     orcid: "https://orcid.org/0000-0001-6426-5946"
@@ -25,6 +26,7 @@ authors:
     orcid: "https://orcid.org/0000-0003-3408-3871"
   - family-names: "Sommerhalder"
     given-names: "Manuel"
+    orcid: "https://orcid.org/0000-0001-5746-7371"
 title: "CATHODE"
 version: 1.0.0
 date-released: 2021-09-03
@@ -48,6 +50,7 @@ preferred-citation:
       orcid: "https://orcid.org/0000-0003-1024-0932"
     - family-names: "Quadfasel"
       given-names: "Tobias"
+      orcid: "https://orcid.org/0000-0003-2360-351X"
     - family-names: "Schlaffer"
       given-names: "Matthias"
       orcid: "https://orcid.org/0000-0001-6426-5946"
@@ -56,6 +59,7 @@ preferred-citation:
       orcid: "https://orcid.org/0000-0003-3408-3871"
     - family-names: "Sommerhalder"
       given-names: "Manuel"
+      orcid: "https://orcid.org/0000-0001-5746-7371"
   title: "Classifying Anomalies THrough Outer Density Estimation (CATHODE)"
   year: 2021
   eprint: 2109.00546
