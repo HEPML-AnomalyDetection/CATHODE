@@ -16,19 +16,19 @@ Tobias Quadfasel, Matthias Schlaffer, David Shih, and Manuel Sommerhalder. <br>
 [arXiv:2109.00546](https://arxiv.org/abs/2109.00546). 
 
 ## Data preparation
+(can be skipped if one starts directly from the preprocessed samples here)
 
-(can be skipped if one uses directly the datasets provided in this repo)
+To get the datasets:
+```
+wget https://zenodo.org/record/4536377/files/events_anomalydetection_v2.features.h5
+wget https://zenodo.org/record/5759087/files/events_anomalydetection_qcd_extra_inneronly_features.h5
+```
 
- * From the full R&D dataset (`events_anomalydetection_v2.features.h5`) take 2\*500 signal and
-    2\*500000 background events and save them as `rnd_dataset.hd5`. The extraction is done using
-    `prepare_datset.ipynb`. The full R&D dataset is not uploaded.
-   pre-processing:
-   * switch jet_1 and jet_2 such that m_j1 > m_j2
-   * require all jet masses m_{j1}, m_{j2} > 1 GeV
-   * require tau_21 to be a real number
-   * split in a training and testing set of equal size
- * In addition to the original LHCO R&D data, two newly produced background simulations are provided
- * run_data_preparation_LHCORD.py does the preprocessing in one go
+To preprocess:
+```
+python run_data_preparation_LHCORD.py
+```
+To scan over different signal injections and/or different splits, use the `--S_over_B` and `--seed` option respectively. The results in the paper when scanning into lower S/B ratios were achieved by varying the seed from 1 to 10.
 
 ## Running the full pipeline
 
