@@ -1,40 +1,16 @@
 import os
 import numpy as np
-from keras.callbacks import Callback
+import matplotlib.pyplot as plt
+import torch
 from classifier import build_classifier
 from sklearn.utils import class_weight
-
-
-class prediction_history(Callback):
-    # custom callback that stores each epoch prediction
-    def __init__(self, model, X_train, X_test, X_extrasig=None, use_mjj=False, save_model=None):
-        self.predhis = []
-        self.predhis_extrasig = []
-        self.use_mjj = use_mjj
-        self.model = model
-        self.X_train = X_train
-        self.X_test = X_test
-        self.X_extrasig = X_extrasig
-        self.save_model = save_model
-
-    def on_epoch_end(self, epoch, logs={}):
-        if self.save_model is None:
-            if self.use_mjj:
-                self.predhis.append(self.model.predict(self.X_test[:, :5]))
-            else:
-                self.predhis.append(self.model.predict(self.X_test[:, 1:5]))
-            if self.X_extrasig is not None:
-                if self.use_mjj:
-                    self.predhis_extrasig.append(self.model.predict(self.X_extrasig[:, :5]))
-                else:
-                    self.predhis_extrasig.append(self.model.predict(self.X_extrasig[:, 1:5]))
-        else:
-            self.model.save(self.save_model+"_ep"+str(epoch))
 
 
 def train_model(classifier_configfile, epochs, X_train, y_train, X_test, y_test, X_extrasig=None,
                 X_val=None, use_mjj=False, batch_size=128, supervised=False,
                 use_class_weights=False, CWoLa=False, SR_center=3.5, save_model=None, verbose=True):
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda:0" if use_cuda else "cpu")
     # training a single classifier model
     if supervised:
         assert X_val is not None, (
@@ -84,21 +60,41 @@ def train_model(classifier_configfile, epochs, X_train, y_train, X_test, y_test,
 
     if use_class_weights:
         if CWoLa:
-            lower_SB_mask = np.logical_and((y_train == 0), (X_train[:, 0] < SR_center))
-            upper_SB_mask = np.logical_and((y_train == 0), (X_train[:, 0] > SR_center))
-            SB_labels = np.concatenate((np.zeros(sum(lower_SB_mask)),
-                                        np.ones(sum(upper_SB_mask)))).astype('int64')
-            # weights between left and right SB
-            SB_weights = len(SB_labels) / (2 * np.bincount(SB_labels))
-            SB_vs_SR_events = np.array([len(SB_labels), sum(y_train == 1)])
-            SB_vs_SR_weights = len(y_train) / (2 * SB_vs_SR_events) # weights between SB and SR
+            # training weights
+            lower_SB_mask_train = np.logical_and((y_train == 0), (X_train[:, 0] < SR_center))
+            upper_SB_mask_train = np.logical_and((y_train == 0), (X_train[:, 0] > SR_center))
+            SB_labels_train = np.concatenate((np.zeros(sum(lower_SB_mask_train)),
+                                        np.ones(sum(upper_SB_mask_train)))).astype('int64')
+            ## weights between left and right SB
+            SB_weights_train  = len(SB_labels_train) / (2 * np.bincount(SB_labels_train))
+            SB_vs_SR_events_train = np.array([len(SB_labels_train), sum(y_train == 1)])
+            SB_vs_SR_weights_train = len(y_train) / (2 * SB_vs_SR_events_train) ## weights between SB and SR
 
-            SR_weight = SB_vs_SR_weights[1]
-            lower_SB_weight = SB_vs_SR_weights[0]*SB_weights[0]
-            upper_SB_weight = SB_vs_SR_weights[0]*SB_weights[1]
+            SR_weight_train = SB_vs_SR_weights_train[1]
+            lower_SB_weight_train = SB_vs_SR_weights_train[0]*SB_weights_train[0]
+            upper_SB_weight_train = SB_vs_SR_weights_train[0]*SB_weights_train[1]
 
-            sample_weights = lower_SB_weight*lower_SB_mask + SR_weight*y_train +\
-                upper_SB_weight*upper_SB_mask
+            sample_weights_train = lower_SB_weight_train*lower_SB_mask_train + SR_weight_train*y_train +\
+                upper_SB_weight_train*upper_SB_mask_train
+
+            # validation weights
+            lower_SB_mask_val = np.logical_and((label_val == 0), (input_val[:, 0] < SR_center))
+            upper_SB_mask_val = np.logical_and((label_val == 0), (input_val[:, 0] > SR_center))
+            SB_labels_val = np.concatenate((np.zeros(sum(lower_SB_mask_val)),
+                                        np.ones(sum(upper_SB_mask_val)))).astype('int64')
+            ## weights between left and right SB
+            SB_weights_val  = len(SB_labels_val) / (2 * np.bincount(SB_labels_val))
+            SB_vs_SR_events_val = np.array([len(SB_labels_val), sum(label_val == 1)])
+            SB_vs_SR_weights_val = len(label_val) / (2 * SB_vs_SR_events_val) ## weights between SB and SR
+
+            SR_weight_val = SB_vs_SR_weights_val[1]
+            lower_SB_weight_val = SB_vs_SR_weights_val[0]*SB_weights_val[0]
+            upper_SB_weight_val = SB_vs_SR_weights_val[0]*SB_weights_val[1]
+
+            sample_weights_val = lower_SB_weight_val*lower_SB_mask_val + SR_weight_val*label_val +\
+                upper_SB_weight_val*upper_SB_mask_val
+
+            sample_weights = (sample_weights_train, sample_weights_val)
             class_weights = None
         else:
             class_weights = class_weight.compute_class_weight('balanced',
@@ -110,14 +106,96 @@ def train_model(classifier_configfile, epochs, X_train, y_train, X_test, y_test,
         class_weights = None
         sample_weights = None
 
-    model = build_classifier(classifier_configfile)
-    predictions = prediction_history(model, X_train, X_test, X_extrasig=X_extrasig,
-                                     use_mjj=use_mjj, save_model=save_model)
-    kerasfit = model.fit(input_train, label_train, epochs=epochs, batch_size=batch_size,
-                         verbose=verbose, class_weight=class_weights, sample_weight=sample_weights,
-                         validation_data=(input_val, label_val), callbacks=[predictions])
+    if sample_weights is not None:
+        train_dataset = torch.utils.data.TensorDataset(torch.tensor(input_train),
+            torch.tensor(label_train).reshape(-1,1),
+            torch.tensor(sample_weights[0]).reshape(-1,1))
+        val_dataset = torch.utils.data.TensorDataset(torch.tensor(input_val),
+            torch.tensor(label_val).reshape(-1,1),
+            torch.tensor(sample_weights[1]).reshape(-1,1))
+    else:
+        train_dataset = torch.utils.data.TensorDataset(torch.tensor(input_train),
+            torch.tensor(label_train).reshape(-1,1))
+        val_dataset = torch.utils.data.TensorDataset(torch.tensor(input_val),
+            torch.tensor(label_val).reshape(-1,1))
 
-    return predictions.predhis, predictions.predhis_extrasig, kerasfit.history["loss"], kerasfit.history["val_loss"]
+    train_dataloader = torch.utils.data.DataLoader(
+                        train_dataset, batch_size=batch_size, shuffle=True)
+    val_dataloader = torch.utils.data.DataLoader(
+                      val_dataset, batch_size=batch_size, shuffle=False)
+
+    train_loss = np.zeros(epochs) ## add pre-training loss?
+    val_loss = np.zeros(epochs)
+
+    model, loss_func, optimizer = build_classifier(classifier_configfile, n_inputs=input_train.shape[1])
+    model.to(device)
+    assert not (sample_weights is not None and class_weights is not None), (
+        "Both sample weights and class weights given!")
+    for epoch in range(epochs):
+        print("training epoch nr", epoch)
+        epoch_train_loss = 0.
+        epoch_val_loss = 0.
+
+        model.train()
+        for i, batch in enumerate(train_dataloader):
+            if verbose:
+                print("...batch nr", i)
+            if sample_weights is not None:
+                batch_inputs, batch_labels, batch_weights = batch
+                batch_weights = batch_weights.to(device)
+                batch_inputs, batch_labels = batch_inputs.to(device), batch_labels.to(device)
+            else:
+                batch_inputs, batch_labels = batch
+                batch_inputs, batch_labels = batch_inputs.to(device), batch_labels.to(device)
+                if class_weights is not None:
+                    batch_weights = (torch.ones(batch_labels.shape, device=device)
+                        - batch_labels)*class_weights[0] \
+                        + batch_labels*class_weights[1]
+                else:
+                    batch_weights = None
+
+            optimizer.zero_grad()
+            batch_outputs = model(batch_inputs)
+            batch_loss = loss_func(batch_outputs, batch_labels, weight=batch_weights)
+            batch_loss.backward()
+            optimizer.step()
+            epoch_train_loss += batch_loss
+            if verbose:
+                print("...batch training loss:", batch_loss.item())
+
+        epoch_train_loss /= (i+1)
+        print("training loss:", epoch_train_loss.item())
+
+        with torch.no_grad():
+            model.eval()
+            for i, batch in enumerate(val_dataloader):
+
+                if sample_weights is not None:
+                    batch_inputs, batch_labels, batch_weights = batch
+                    batch_weights = batch_weights.to(device)
+                    batch_inputs, batch_labels = batch_inputs.to(device), batch_labels.to(device)
+                else:
+                    batch_inputs, batch_labels = batch
+                    batch_inputs, batch_labels = batch_inputs.to(device), batch_labels.to(device)
+                    if class_weights is not None:
+                        batch_weights = (torch.ones(batch_labels.shape, device=device)
+                            - batch_labels)*class_weights[0] \
+                            + batch_labels*class_weights[1]
+                    else:
+                        batch_weights = None
+
+                batch_outputs = model(batch_inputs)
+                batch_loss = loss_func(batch_outputs, batch_labels, weight=batch_weights)
+                epoch_val_loss += batch_loss
+            epoch_val_loss /= (i+1)
+        print("validation loss:", epoch_val_loss.item())
+
+        train_loss[epoch] = epoch_train_loss
+        val_loss[epoch] = epoch_val_loss
+
+        if save_model is not None:
+            torch.save(model, save_model+"_ep"+str(epoch))
+    return train_loss, val_loss
 
 
 def train_n_models(n_runs, classifier_configfile, epochs, X_train, y_train, X_test, y_test,
@@ -129,8 +207,6 @@ def train_n_models(n_runs, classifier_configfile, epochs, X_train, y_train, X_te
     #    If supervised is set true, the classifier learns to distinguish sig and
     #    bkg according to their actual labels.
 
-    preds = {}
-    preds_extrasig = {}
     loss = {}
     val_loss = {}
 
@@ -140,7 +216,7 @@ def train_n_models(n_runs, classifier_configfile, epochs, X_train, y_train, X_te
             current_save_model = save_model+"_run"+str(j)
         else:
             current_save_model = None
-        preds[j], preds_extrasig[j], loss[j], val_loss[j] = train_model(
+        loss[j], val_loss[j] = train_model(
             classifier_configfile, epochs, X_train, y_train, X_test, y_test,
             X_val=X_val, X_extrasig=X_extrasig, use_mjj=use_mjj, batch_size=batch_size,
             supervised=supervised, use_class_weights=use_class_weights,
@@ -164,26 +240,39 @@ def train_n_models(n_runs, classifier_configfile, epochs, X_train, y_train, X_te
     np.save(os.path.join(savedir, 'loss_matris.npy'), loss_matrix)
 
     if save_model is None:
-        preds_matrix = np.zeros((n_runs, epochs, len(preds[0][0])))
-        for j in range(n_runs):
-            for i in range(epochs):
-                for k in range(len(preds[0][0])):
-                    preds_matrix[j, i, k] = preds[j][i][k]
-
-        if X_extrasig is None:
-            preds_matrix_extrasig = None
-        else:
-            preds_matrix_extrasig = np.zeros((n_runs, epochs, len(preds_extrasig[0][0])))
-            for j in range(n_runs):
-                for i in range(epochs):
-                    for k in range(len(preds_extrasig[0][0])):
-                        preds_matrix_extrasig[j, i, k] = preds_extrasig[j][i][k]
-
-        np.save(os.path.join(savedir, 'preds_matris.npy'), preds_matrix)
-        if X_extrasig is not None:
-            np.save(os.path.join(savedir, 'preds_matris_extrasig.npy'), preds_matrix_extrasig)
+        raise NotImplementedError("Removed prediction saving.",
+            "Please provide model name to save_model.")
     else:
         preds_matrix = None
         preds_matrix_extrasig = None
 
-    return preds_matrix, preds_matrix_extrasig, loss_matrix, val_loss_matrix
+    return loss_matrix, val_loss_matrix
+
+
+def plot_classifier_losses(train_losses, val_losses, yrange=None, savefig=None, suppress_show=False):
+    # plots the classifier training losses from loss array. The image is saved if a filename is
+    # given to the savefig parameter
+    avg_train_losses = (
+        train_losses[5:]+train_losses[4:-1]+train_losses[3:-2]
+        +train_losses[2:-3]+train_losses[1:-4])/5
+    avg_val_losses = (val_losses[5:]+val_losses[4:-1]+val_losses[3:-2]
+                      +val_losses[2:-3]+val_losses[1:-4])/5
+
+    plt.plot(range(1, len(train_losses)), train_losses[1:], linestyle=":", color="blue")
+    plt.plot(range(1, len(val_losses)), val_losses[1:], linestyle=":", color="orange")
+    plt.plot(range(3, len(train_losses)-2), avg_train_losses, label="Training", color="blue")
+    plt.plot(range(3, len(val_losses)-2), avg_val_losses, label="Validation", color="orange")
+    plt.plot(np.nan, np.nan, linestyle="None", label=" ")
+    plt.plot(np.nan, np.nan, linestyle=":", color="black", label="Per Epoch Value")
+    plt.plot(np.nan, np.nan, linestyle="-", color="black", label="5-Epoch Average")
+
+    if yrange is not None:
+        plt.ylim(*yrange)
+    plt.xlabel("Training Epoch")
+    plt.ylabel("(Mean) Binary Cross Entropy Loss")
+    plt.legend(loc="upper right", frameon=False)
+    if savefig is not None:
+        plt.savefig(savefig+".pdf", bbox_inches="tight")
+    if not suppress_show:
+        plt.show()
+    plt.close()

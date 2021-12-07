@@ -1,28 +1,56 @@
-import tensorflow as tf
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
 import yaml
 
 
-def build_classifier(filename):
+class Classifier(nn.Module):
+    def __init__(self, layers, n_inputs=5):
+        super().__init__()
+
+        self.layers = []
+        for nodes in layers:
+            self.layers.append(nn.Linear(n_inputs, nodes))
+            self.layers.append(nn.ReLU())
+            n_inputs = nodes
+        self.layers.append(nn.Linear(n_inputs, 1))
+        self.layers.append(nn.Sigmoid())
+        self.model_stack = nn.Sequential(*self.layers)
+
+    def forward(self, x):
+        return self.model_stack(x)
+
+    def predict(self, x):
+        use_cuda = torch.cuda.is_available()
+        device = torch.device("cuda:0" if use_cuda else "cpu")
+        with torch.no_grad():
+            self.eval()
+            x = torch.tensor(x, device=device)
+            prediction = self.forward(x).detach().cpu().numpy()
+        return prediction
+
+
+def build_classifier(filename, n_inputs=5):
     with open(filename, 'r') as stream:
         params = yaml.safe_load(stream)
 
-    model = tf.keras.Sequential()
-    for nodes in params['layers']:
-        model.add(tf.keras.layers.Dense(nodes, activation="relu"))
-    model.add(tf.keras.layers.Dense(1, activation="sigmoid"))
+    model = Classifier(params['layers'], n_inputs=n_inputs)
+    if params['loss'] == 'binary_crossentropy':
+        loss = F.binary_cross_entropy
+    else:
+        raise NotImplementedError
 
     if params['optimizer'] == 'adam':
-        optimizer = tf.keras.optimizers.Adam(
-            learning_rate=float(params['learning_rate']))
+        optimizer = optim.Adam(model.parameters(),
+                               lr=float(params['learning_rate']))
+    else:
+         raise NotImplementedError       
 
-    model.compile(loss=params['loss'],
-                  optimizer=optimizer,
-                  metrics=['accuracy'])
-
-    return model
+    return model, loss, optimizer
 
 
 if __name__ == '__main__':
-    model = build_classifier('classifier.yml')
-    x = tf.random.uniform((1, 5))
-    print(model(x))
+    net = Classifier('classifier.yml', n_inputs=5)
+    x = torch.rand(5)
+    print(net(x))

@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
-import tensorflow as tf
+import torch
 import sklearn
 from sklearn import metrics
 from sklearn.metrics import roc_curve
@@ -47,16 +47,20 @@ def minimum_validation_loss_models(prediction_dir, n_epochs=10):
     for i in range(validation_loss_matrix.shape[0]):
         min_val_loss_epochs = np.argpartition(validation_loss_matrix[i, :],
                                               n_epochs)[:n_epochs]
+        print("minimum validation loss epochs:", min_val_loss_epochs)
         model_paths.append([os.path.join(prediction_dir, f"model_run{i}_ep{x}") for x in min_val_loss_epochs])
     return model_paths 
 
 
-# load Tensorflow Models to derive predictions only on designated epochs
+# load Pytorch Models to derive predictions only on designated epochs
 #   model_path_list should be a list of lists of model paths. The outer layer being per run,
 #   the inner being per epoch: [[path_run0_ep0, path_run_ep1, ...], [path_run1_ep0, path_run1_ep1, ...], ...]
 def preds_from_models(model_path_list, data_dir, save_dir, use_mjj=False, predict_on_samples=False, extra_signal=True, take_mean=True):
 
-    X_test = np.load(os.path.join(data_dir, 'X_test.npy'))
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda:0" if use_cuda else "cpu") 
+
+    X_test = np.load(os.path.join(data_dir, 'X_test.npy')).astype("float32")
     if use_mjj:
         X_test = X_test.copy()
         X_train = np.load(os.path.join(data_dir, 'X_train.npy'))
@@ -78,7 +82,9 @@ def preds_from_models(model_path_list, data_dir, save_dir, use_mjj=False, predic
     run_predictions = []
     run_predictions_extrasig = []
     for i, model_paths in enumerate(model_path_list): ## looping over runs
-        model_list = [tf.keras.models.load_model(model_path) for model_path in model_paths]
+        model_list = [torch.load(model_path, map_location=device) for model_path in model_paths]
+        for model in model_list:
+            model.eval()
         epoch_predictions = []
         epoch_predictions_extrasig = []
         for model in model_list: ## looping over epochs
@@ -308,7 +314,8 @@ def tprs_fprs_sics_data_vs_sample(preds_matris, y_test):
 
 # ensemble preds function -- TODO variable number of epochs
 def ensemble_preds_func(preds_matris, y_test):
-    bce = tf.keras.losses.BinaryCrossentropy()
+    #bce = tf.keras.losses.BinaryCrossentropy()
+    bce = torch.nn.BCELoss()
     ensemble_val_losses = []
     ensemble_preds_list = []
     for i in range(preds_matris.shape[0]):
@@ -324,7 +331,8 @@ def ensemble_preds_func(preds_matris, y_test):
                               +preds_matris[i, 9:])
         ensemble_val_loss = []
         for j in range(ensemble_preds.shape[0]):
-            ensemble_val_loss.append(bce(y_test, ensemble_preds[j, :]).numpy().item())
+            #ensemble_val_loss.append(bce(y_test, ensemble_preds[j, :]).numpy().item())
+            ensemble_val_loss.append(bce(ensemble_preds[j, :], y_test).numpy().item())
         ensemble_val_losses.append(np.array(ensemble_val_loss))
         ensemble_preds_list.append(ensemble_preds)
     ensemble_val_loss_matris = np.stack(ensemble_val_losses)

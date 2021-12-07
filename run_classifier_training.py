@@ -1,8 +1,10 @@
 import argparse
 import os
 import numpy as np
-from classifier_training_utils import train_n_models
+from classifier_training_utils import train_n_models, plot_classifier_losses
 from evaluation_utils import minimum_val_loss_model_evaluation
+import matplotlib as mpl
+mpl.use('Agg')
 
 parser = argparse.ArgumentParser(
     description=('Train the classifier on SR data vs samples (or vs SB data for CWoLa). '
@@ -47,9 +49,6 @@ parser.add_argument('--verbose', action="store_true", default=False,
 
 def main(args):
 
-    # force TF to use only the CPU (working around a bug in the Rutgers server installation)
-    #os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
     # loading the data
     # TODO get rid of the y's since the information is fully included in X
     X_train = np.load(os.path.join(args.data_dir, 'X_train.npy'))
@@ -73,7 +72,7 @@ def main(args):
         save_model = None
 
     # actual training
-    preds_matris, preds_matris_extrasig, loss_matris, val_loss_matris = train_n_models(
+    loss_matris, val_loss_matris = train_n_models(
         args.n_runs, args.config_file, args.epochs, X_train, y_train, X_test, y_test,
         X_extrasig=X_extrasig, X_val=X_val, use_mjj=args.use_mjj, batch_size=args.batch_size,
         supervised=args.supervised, use_class_weights=args.use_class_weights,
@@ -84,6 +83,12 @@ def main(args):
         minimum_val_loss_model_evaluation(args.data_dir, args.savedir, n_epochs=10,
                                 use_mjj=args.use_mjj, extra_signal=not args.no_extra_signal)
 
+    for i in range(loss_matris.shape[0]):
+        plot_classifier_losses(
+            loss_matris[i], val_loss_matris[i],
+            savefig=save_model+"_run"+str(i)+"_loss_plot",
+            suppress_show=True
+        )
 
 if __name__ == "__main__":
     args_extern = parser.parse_args()
