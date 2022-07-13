@@ -703,8 +703,8 @@ class sample_handler:
 
             if not self.no_mean_shift:
                 # un-standardize it
-                outer_samps_unstd = (current_samps_tensor*outer_traindict['std2'][:4]
-                                     +outer_traindict['mean2'][:4]).detach().cpu().numpy()
+                outer_samps_unstd = (current_samps_tensor*outer_traindict['std2']
+                                     +outer_traindict['mean2']).detach().cpu().numpy()
             else:
                 outer_samps_unstd = current_samps_tensor.detach().cpu().numpy()
             outer_samps_nans = np.argwhere(np.isinf(outer_samps_unstd))
@@ -713,14 +713,14 @@ class sample_handler:
                 # un-transform it
                 current_samps_unstd_untrans = logit_transform_inverse(
                     outer_samps_unstd,
-                    outer_traindict['max'].detach().cpu().numpy()[:4],
-                    outer_traindict['min'].detach().cpu().numpy()[:4]
+                    outer_traindict['max'].detach().cpu().numpy(),
+                    outer_traindict['min'].detach().cpu().numpy()
                 )
             else:
                 current_samps_unstd_untrans = outer_samps_unstd *\
-                    (outer_traindict['max'].detach().cpu().numpy()[:4] -\
-                     outer_traindict['min'].detach().cpu().numpy()[:4])
-                current_samps_unstd_untrans += outer_traindict['min'].detach().cpu().numpy()[:4]
+                    (outer_traindict['max'].detach().cpu().numpy() -\
+                     outer_traindict['min'].detach().cpu().numpy())
+                current_samps_unstd_untrans += outer_traindict['min'].detach().cpu().numpy()
             outer_samps_tensor_list.append(current_samps_unstd_untrans)
 
         outer_samps_unstd_untrans = np.concatenate(outer_samps_tensor_list)
@@ -955,20 +955,22 @@ def logit_transform(data, datamax, datamin, domain_cut=False, fiducial_cut=False
     data2 = (data-datamin)/(datamax-datamin)
 
     if fiducial_cut:
-        mask = (data2[:, 0] > 0.05) & (data2[:, 0] < 0.95) &\
-            (data2[:, 1] > 0.05) & (data2[:, 1] < 0.95) &\
-            (data2[:, 2] > 0.05) & (data2[:, 2] < 0.95) &\
-            (data2[:, 3] > 0.05) & (data2[:, 3] < 0.95)
+        mask = torch.prod(((data2 > 0.05) & (data2 < 0.95)), 1).type(torch.bool)
     elif domain_cut:
-        mask = (data2[:, 0] > 0) & (data2[:, 0] < 1) &\
-            (data2[:, 1] > 0) & (data2[:, 1] < 1) &\
-            (data2[:, 2] > 0) & (data2[:, 2] < 1) &\
-            (data2[:, 3] > 0) & (data2[:, 3] < 1)
+        mask = torch.prod(((data2 > 0) & (data2 < 1)), 1).type(torch.bool)
     else:
-        mask = (data2[:, 0] == data2[:, 0]) ## True
+        mask = torch.ones(data2.shape[0], dtype=torch.bool)
 
     data3 = data2[mask]
     data4 = torch.log((data3)/(1-data3))
+    
+    for idx in range(data4.shape[1]):
+        if torch.isinf(data4[:, idx]).any():
+            no_inf_max = torch.max(data4[~torch.isinf(data4[:, idx]), idx])
+            no_inf_min = torch.min(data4[~torch.isinf(data4[:, idx]), idx])
+            data4[data4[:, idx]==np.inf, idx] = no_inf_max
+            data4[data4[:, idx]==-np.inf, idx] = no_inf_min
+    
     return data4, mask
 
 
