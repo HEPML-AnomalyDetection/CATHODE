@@ -955,17 +955,11 @@ def logit_transform(data, datamax, datamin, domain_cut=False, fiducial_cut=False
     data2 = (data-datamin)/(datamax-datamin)
 
     if fiducial_cut:
-        mask = (data2[:, 0] > 0.05) & (data2[:, 0] < 0.95) &\
-            (data2[:, 1] > 0.05) & (data2[:, 1] < 0.95) &\
-            (data2[:, 2] > 0.05) & (data2[:, 2] < 0.95) &\
-            (data2[:, 3] > 0.05) & (data2[:, 3] < 0.95)
+        mask = torch.prod(((data2 > 0.05) & (data2 < 0.95)), 1).type(torch.bool)
     elif domain_cut:
-        mask = (data2[:, 0] > 0) & (data2[:, 0] < 1) &\
-            (data2[:, 1] > 0) & (data2[:, 1] < 1) &\
-            (data2[:, 2] > 0) & (data2[:, 2] < 1) &\
-            (data2[:, 3] > 0) & (data2[:, 3] < 1)
+        mask = torch.prod(((data2 > 0) & (data2 < 1)), 1).type(torch.bool)
     else:
-        mask = (data2[:, 0] == data2[:, 0]) ## True
+        mask = torch.ones(data2.shape[0], dtype=torch.bool)
 
     data3 = data2[mask]
     data4 = torch.log((data3)/(1-data3))
