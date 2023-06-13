@@ -97,9 +97,9 @@ def train_model(classifier_configfile, epochs, X_train, y_train, X_test, y_test,
             sample_weights = (sample_weights_train, sample_weights_val)
             class_weights = None
         else:
-            class_weights = class_weight.compute_class_weight('balanced',
-                                                              np.unique(label_train),
-                                                              label_train)
+            class_weights = class_weight.compute_class_weight(class_weight='balanced',
+                                                              classes=np.unique(label_train),
+                                                              y=label_train)
             class_weights = dict(enumerate(class_weights))
             sample_weights = None
     else:
