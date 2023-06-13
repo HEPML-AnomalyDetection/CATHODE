@@ -89,13 +89,13 @@ def preds_from_models(model_path_list, data_dir, save_dir, use_mjj=False, predic
         epoch_predictions_extrasig = []
         for model in model_list: ## looping over epochs
             if use_mjj:
-                epoch_predictions.append(model.predict(test_data[:,:5]).flatten())
+                epoch_predictions.append(model.predict(test_data[:,:-2]).flatten())
                 if extra_signal:
-                    epoch_predictions_extrasig.append(model.predict(extrasig_data[:,:5]).flatten())
+                    epoch_predictions_extrasig.append(model.predict(extrasig_data[:,:-2]).flatten())
             else:
-                epoch_predictions.append(model.predict(test_data[:,1:5]).flatten())
+                epoch_predictions.append(model.predict(test_data[:,1:-2]).flatten())
                 if extra_signal:
-                    epoch_predictions_extrasig.append(model.predict(extrasig_data[:,1:5]).flatten())
+                    epoch_predictions_extrasig.append(model.predict(extrasig_data[:,1:-2]).flatten())
         run_predictions.append(np.stack(epoch_predictions))
         if extra_signal:
             run_predictions_extrasig.append(np.stack(epoch_predictions_extrasig))

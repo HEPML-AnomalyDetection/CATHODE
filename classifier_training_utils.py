@@ -33,24 +33,24 @@ def train_model(classifier_configfile, epochs, X_train, y_train, X_test, y_test,
             X_val = X_val.copy()
             X_val[:, 0] -= mjj_mean
             X_val[:, 0] /= mjj_std
-            input_val = X_val[:, :5]
+            input_val = X_val[:, :-2]
         else:
-            input_val = X_test[:, :5]
-        input_train = X_train[:, :5]
+            input_val = X_test[:, :-2]
+        input_train = X_train[:, :-2]
 
     else:
-        input_train = X_train[:, 1:5]
+        input_train = X_train[:, 1:-2]
         if X_val is not None:
-            input_val = X_val[:, 1:5]
+            input_val = X_val[:, 1:-2]
         else:
-            input_val = X_test[:, 1:5]
+            input_val = X_test[:, 1:-2]
 
     if supervised:
         print("Running a fully supervised training. Sig/bkg labels will be known!")
         input_train = input_train[y_train == 1]
         input_val = input_val[X_val[:, -2] == 1]
-        label_train = X_train[y_train == 1][:, 6]
-        label_val = X_val[X_val[:, -2] == 1][:, 6]
+        label_train = X_train[y_train == 1][:, -1]
+        label_val = X_val[X_val[:, -2] == 1][:, -1]
     else:
         label_train = y_train
         if X_val is not None:

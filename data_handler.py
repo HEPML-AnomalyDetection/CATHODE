@@ -703,8 +703,8 @@ class sample_handler:
 
             if not self.no_mean_shift:
                 # un-standardize it
-                outer_samps_unstd = (current_samps_tensor*outer_traindict['std2'][:4]
-                                     +outer_traindict['mean2'][:4]).detach().cpu().numpy()
+                outer_samps_unstd = (current_samps_tensor*outer_traindict['std2']
+                                     +outer_traindict['mean2']).detach().cpu().numpy()
             else:
                 outer_samps_unstd = current_samps_tensor.detach().cpu().numpy()
             outer_samps_nans = np.argwhere(np.isinf(outer_samps_unstd))
@@ -713,14 +713,14 @@ class sample_handler:
                 # un-transform it
                 current_samps_unstd_untrans = logit_transform_inverse(
                     outer_samps_unstd,
-                    outer_traindict['max'].detach().cpu().numpy()[:4],
-                    outer_traindict['min'].detach().cpu().numpy()[:4]
+                    outer_traindict['max'].detach().cpu().numpy(),
+                    outer_traindict['min'].detach().cpu().numpy()
                 )
             else:
                 current_samps_unstd_untrans = outer_samps_unstd *\
-                    (outer_traindict['max'].detach().cpu().numpy()[:4] -\
-                     outer_traindict['min'].detach().cpu().numpy()[:4])
-                current_samps_unstd_untrans += outer_traindict['min'].detach().cpu().numpy()[:4]
+                    (outer_traindict['max'].detach().cpu().numpy() -\
+                     outer_traindict['min'].detach().cpu().numpy())
+                current_samps_unstd_untrans += outer_traindict['min'].detach().cpu().numpy()
             outer_samps_tensor_list.append(current_samps_unstd_untrans)
 
         outer_samps_unstd_untrans = np.concatenate(outer_samps_tensor_list)
