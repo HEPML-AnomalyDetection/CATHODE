@@ -212,12 +212,11 @@ class LHCORD_data_handler:
             shuffle_loader=True,
             no_logit=no_logit, device=self.device,
             no_mean_shift=no_mean_shift,
-            external_datadict=external_param)
+            external_datadict=self.outer_ANODE_datadict_train)
         self.inner_ANODE_datadict_test = load_dataset(
             self.innerdata_test,
             batch_size=self.test_batch_size,
-            external_datadict=self.inner_ANODE_datadict_train if external_param is None \
-            else external_param,
+            external_datadict=self.outer_ANODE_datadict_train,
             fiducial_cut=fiducial_cut,
             shuffle_loader=False,
             no_logit=no_logit, device=self.device,
@@ -226,8 +225,7 @@ class LHCORD_data_handler:
             self.inner_ANODE_datadict_val = load_dataset(
                 self.innerdata_val,
                 batch_size=self.test_batch_size,
-                external_datadict=self.inner_ANODE_datadict_train if external_param is None \
-                else external_param,
+                external_datadict=self.outer_ANODE_datadict_train,
                 fiducial_cut=fiducial_cut,
                 shuffle_loader=False,
                 no_logit=no_logit, device=self.device,
@@ -236,8 +234,7 @@ class LHCORD_data_handler:
             self.inner_ANODE_datadict_extrasig = load_dataset(
                 self.innerdata_extrasig,
                 batch_size=self.test_batch_size,
-                external_datadict=self.inner_ANODE_datadict_train if external_param is None \
-                else external_param,
+                external_datadict=self.outer_ANODE_datadict_train,
                 fiducial_cut=fiducial_cut,
                 shuffle_loader=False,
                 no_logit=no_logit, device=self.device,
@@ -246,8 +243,7 @@ class LHCORD_data_handler:
             self.inner_ANODE_datadict_extrabkg = load_dataset(
                 self.innerdata_extrabkg,
                 batch_size=self.test_batch_size,
-                external_datadict=self.inner_ANODE_datadict_train if external_param is None \
-                else external_param,
+                external_datadict=self.outer_ANODE_datadict_train,
                 fiducial_cut=fiducial_cut,
                 shuffle_loader=False,
                 no_logit=no_logit, device=self.device,
@@ -662,76 +658,8 @@ class sample_handler:
 
     @torch.no_grad()
     def produce_samples(self):
-        # sample mjj
-        if self.uniform_cond: # sample mjj uniformly
-            uni_mjj = np.random.uniform(low=self.cond_min, high=self.cond_max,
-                                        size=(self.n_samples, 1)).astype('float32')
-            uni_mjj_torch = torch.from_numpy(uni_mjj).reshape((-1, 1))
-            my_cond_inputs = uni_mjj_torch.reshape((-1, 1))
-        else: # sample mjj from actual data
-            raw_train_mjj_vals = self.data_handler.inner_ANODE_datadict_train['labels']
-
-            ## just copying actual mjj values (old approach)
-            #train_size = raw_train_mjj_vals.shape[0]
-            #train_mjj_vals = np.concatenate(
-            #    [raw_train_mjj_vals for x in range(self.n_samples//train_size + 1)])
-            #np.random.shuffle(train_mjj_vals)
-            #train_mjj_vals = train_mjj_vals[:self.n_samples]
-
-            ## fitting and sampling KDE
-            mjj_logit = quick_logit(raw_train_mjj_vals.detach().cpu().numpy())
-            train_mjj_vals = logit_transform_inverse(KernelDensity(
-                bandwidth=self.KDE_bandwidth, kernel='gaussian').fit(
-                    mjj_logit.reshape(-1, 1)).sample(self.n_samples),
-                                                     max(raw_train_mjj_vals).item(),
-                                                     min(raw_train_mjj_vals).item())
-
-            train_mjj_vals = train_mjj_vals.astype(np.float32)         
-            train_mjj_vals_torch = torch.from_numpy(train_mjj_vals).reshape((-1, 1))
-            my_cond_inputs = train_mjj_vals_torch.reshape((-1, 1))
-
-        # sample auxiliary variables with these conditionals
-        outer_traindict = self.data_handler.outer_ANODE_datadict_train
-
-        outer_samps_tensor_list = []
-        n_samples_per_model = int(self.n_samples/len(self.model_list))
-        for i, outer_model in enumerate(self.model_list):
-            print(f"sampling from model {i+1}/{len(self.model_list)}")
-            current_samps_tensor = outer_model.sample(
-                num_samples=n_samples_per_model,
-                cond_inputs=my_cond_inputs[i*n_samples_per_model:(i+1)*n_samples_per_model])
-
-            if not self.no_mean_shift:
-                # un-standardize it
-                outer_samps_unstd = (current_samps_tensor*outer_traindict['std2']
-                                     +outer_traindict['mean2']).detach().cpu().numpy()
-            else:
-                outer_samps_unstd = current_samps_tensor.detach().cpu().numpy()
-            outer_samps_nans = np.argwhere(np.isinf(outer_samps_unstd))
-
-            if not self.no_logit:
-                # un-transform it
-                current_samps_unstd_untrans = logit_transform_inverse(
-                    outer_samps_unstd,
-                    outer_traindict['max'].detach().cpu().numpy(),
-                    outer_traindict['min'].detach().cpu().numpy()
-                )
-            else:
-                current_samps_unstd_untrans = outer_samps_unstd *\
-                    (outer_traindict['max'].detach().cpu().numpy() -\
-                     outer_traindict['min'].detach().cpu().numpy())
-                current_samps_unstd_untrans += outer_traindict['min'].detach().cpu().numpy()
-            outer_samps_tensor_list.append(current_samps_unstd_untrans)
-
-        outer_samps_unstd_untrans = np.concatenate(outer_samps_tensor_list)
-        print("averaged the samples to a tensor of shape:", outer_samps_unstd_untrans.shape)
-
-        # shuffle samples
-        shuffled_indices = np.random.permutation(outer_samps_unstd_untrans.shape[0])
-        shuffled_samples = outer_samps_unstd_untrans[shuffled_indices]
-        shuffled_cond_inputs = my_cond_inputs.detach().cpu().numpy()[shuffled_indices]
-
-        return shuffled_samples, shuffled_cond_inputs
+        data_dim = self.data_handler.inner_ANODE_datadict_train['tensor'].shape[1]
+        return np.random.normal(0, 1, (self.n_samples, data_dim)), np.ones(self.n_samples)
 
 
     @torch.no_grad()
@@ -769,52 +697,11 @@ class sample_handler:
 
     @torch.no_grad()
     def preprocess_samples(self, fiducial_cut=False, no_logit=False, no_mean_shift=False):
-        ## does all the preprocessing for the ANODE data, including saving the min/max/mean/std
-
         self.fiducial_cut = fiducial_cut
-
-        # the transformation will be based on the inner data
-        reference_dict = self.data_handler.inner_ANODE_datadict_train
-
-        if no_logit:
-            if fiducial_cut:
-                _, mask = logit_transform(
-                    torch.from_numpy(self.sample_array).to(self.device),
-                    reference_dict['max'],
-                    reference_dict['min'], domain_cut=True, fiducial_cut=fiducial_cut
-                )
-                tensor2 = torch.from_numpy(self.sample_array).to(self.device)[mask]
-            else:
-                #tensor2 = torch.from_numpy(self.sample_array).to(self.device)
-                #mask = (tensor2[:, 0] == tensor2[:, 0]) ## True
-                tensor2 = torch.from_numpy(self.sample_array).to(self.device)
-                tensor2 = (tensor2 - reference_dict['min'])/\
-                    (reference_dict['max']-reference_dict['min'])
-                mask = ((tensor2 >= 0.) & (tensor2 <= 1.)).all(axis=1)
-                tensor2 = tensor2[mask]
-
-
-        else:
-            tensor2, mask = logit_transform(
-                torch.from_numpy(self.sample_array).to(self.device), reference_dict['max'],
-                reference_dict['min'], domain_cut=True, fiducial_cut=fiducial_cut
-            )
-
-        if not no_mean_shift:
-            tensor2 = (tensor2 - reference_dict['mean2']) / reference_dict['std2']
-        preprocessed_samples = tensor2.detach().cpu().numpy()
-        np_mask = mask.detach().cpu().numpy()
-
-        cond_array = self.cond_array.copy()[np_mask]
-        nan_mask = np.argwhere(np.isnan(preprocessed_samples))
-
-        preprocessed_samples = np.delete(preprocessed_samples, nan_mask, 0)
-        cond_array = np.delete(cond_array, nan_mask, 0)
-
-        self.preprocessed_samples = preprocessed_samples
-        self.preprocessed_cond_array = cond_array
-        self.masked_raw_samples = self.sample_array[np_mask]
-        self.masked_raw_cond_array = self.cond_array[np_mask]
+        self.preprocessed_samples = self.sample_array
+        self.preprocessed_cond_array =  self.cond_array
+        self.masked_raw_samples = self.sample_array
+        self.masked_raw_cond_array = self.cond_array
 
 
     def sanity_check(self, savefig=None, suppress_show=False):
@@ -1122,7 +1009,8 @@ def stack_data(data_array, cond_labels, sig_labels=None, samples=False, CWoLa_ou
 
 
 def mix_data_samples(data_handler, samples_handler=None, oversampling=False, CWoLa=False,
-                     supervised=False, idealized_AD=False, savedir=None, separate_val_set=False):
+                     supervised=False, idealized_AD=False, savedir=None, separate_val_set=False,
+                     model=None):
     # Take preprocessed SR data and samples (or SB data) and mix them for classifier training.
     #   If CWoLa is set true, SR and SB data will be mixed from the data_handler.
     #   Give a directory path to savedir if the arrays should be saved right away.
@@ -1264,30 +1152,34 @@ def mix_data_samples(data_handler, samples_handler=None, oversampling=False, CWo
 
     else:
         # stacking each individually with additional information
-        SR_train_data_array = data_handler.inner_ANODE_datadict_train\
-            ['tensor2'].detach().cpu().numpy()
+        SR_train_data_array = model(data_handler.inner_ANODE_datadict_train\
+            ['tensor2'], data_handler.inner_ANODE_datadict_train\
+            ['labels'])[0].detach().cpu().numpy()
         SR_train_cond_array = data_handler.inner_ANODE_datadict_train\
             ['labels'].detach().cpu().numpy()
         SR_train_sig_labels = data_handler.inner_ANODE_datadict_train\
             ['sigorbg'].detach().cpu().numpy()
 
-        SR_test_data_array = data_handler.inner_ANODE_datadict_test\
-            ['tensor2'].detach().cpu().numpy()
+        SR_test_data_array = model(data_handler.inner_ANODE_datadict_test\
+            ['tensor2'], data_handler.inner_ANODE_datadict_test\
+            ['labels'])[0].detach().cpu().numpy()
         SR_test_cond_array = data_handler.inner_ANODE_datadict_test\
             ['labels'].detach().cpu().numpy()
         SR_test_sig_labels = data_handler.inner_ANODE_datadict_test\
             ['sigorbg'].detach().cpu().numpy()
 
         if data_handler.innerdata_extrasig is not None:
-            SR_extr_data_array = data_handler.inner_ANODE_datadict_extrasig\
-                ['tensor2'].detach().cpu().numpy()
+            SR_extr_data_array = model(data_handler.inner_ANODE_datadict_extrasig\
+                ['tensor2'], data_handler.inner_ANODE_datadict_extrasig\
+                ['labels'])[0].detach().cpu().numpy()
             SR_extr_cond_array = data_handler.inner_ANODE_datadict_extrasig\
                 ['labels'].detach().cpu().numpy()
             SR_extr_sig_labels = np.ones(SR_extr_cond_array.shape)
 
         if data_handler.innerdata_val is not None:
-            SR_val_data_array = data_handler.inner_ANODE_datadict_val\
-                ['tensor2'].detach().cpu().numpy()
+            SR_val_data_array = model(data_handler.inner_ANODE_datadict_val\
+                ['tensor2'], data_handler.inner_ANODE_datadict_val\
+                ['labels'])[0].detach().cpu().numpy()
             SR_val_cond_array = data_handler.inner_ANODE_datadict_val\
                 ['labels'].detach().cpu().numpy()
             SR_val_sig_labels = data_handler.inner_ANODE_datadict_val\
@@ -1295,8 +1187,9 @@ def mix_data_samples(data_handler, samples_handler=None, oversampling=False, CWo
 
         if data_handler.inner_ANODE_datadict_extrabkg is not None:
             print("Using extra background...")
-            SR_extr_bkg_data_array = data_handler.inner_ANODE_datadict_extrabkg\
-                ['tensor2'].detach().cpu().numpy()
+            SR_extr_bkg_data_array = model(data_handler.inner_ANODE_datadict_extrabkg\
+                ['tensor2'], data_handler.inner_ANODE_datadict_extrabkg\
+                ['labels']).detach().cpu().numpy()
             SR_extr_bkg_cond_array = data_handler.inner_ANODE_datadict_extrabkg\
                 ['labels'].detach().cpu().numpy()
             SR_extr_bkg_sig_labels = np.zeros(SR_extr_bkg_cond_array.shape)

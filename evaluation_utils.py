@@ -8,6 +8,8 @@ from sklearn import metrics
 from sklearn.metrics import roc_curve
 from sklearn.metrics import roc_auc_score
 from scipy.interpolate import interp1d
+import matplotlib.gridspec as gridspec
+from scipy.special import logit
 
 
 # loading classifier output data from a directory
@@ -405,3 +407,175 @@ def get_average_performance(data_dir, prediction_dir, n_ensemble_epochs=10,
             predictions, val_losses, n_epochs=n_ensemble_epochs)
     tprs, fprs, sics = tprs_fprs_sics(min_val_loss_predictions, y_test, X_test)
     return evaluate_performance(tprs, fprs, eval_range)
+
+
+def plot_data_sample_comparison(X_vals, y_vals, nbins=50, alpha=0.5,
+                                title=None, savefig=None,
+                                data_label=None, sample_label=None,
+                                data_color=None, sample_color=None,
+                                step_hist=False, draw_signal=False,
+                                remove_signal=True, signal_color=None,
+                                force_ranges=None, logit_trsf=False):
+    # Sanity check plot comparing data and samples before running
+    # the classifier. In version it also comes with 2D correlation
+    # contours. One can also provide a list of forced ranges to
+    # track down problems in hindsight.
+
+    if data_label is None:
+        data_label = "Data"
+    if sample_label is None:
+        sample_label = "Samples"
+    if data_color is None:
+        data_color = "tab:blue"
+    if sample_color is None:
+        sample_color = "tab:orange"
+    if signal_color is None:
+        signal_color = "magenta"
+
+    sample_hist_type = "step" if step_hist else "bar"
+
+    if logit_trsf:
+        X_features = X_vals[:, :-2]
+        min_X = np.min(X_features, axis=0) - 1e-6
+        max_X = np.max(X_features, axis=0) + 1e-5
+        X_features = (X_features-min_X)/(max_X-min_X)
+        X_features = logit(X_features)
+        X_features = ((X_features - np.mean(X_features, axis=0))
+                      / np.std(X_features, axis=0))
+        X_vals = np.hstack((X_features, X_vals[:, -2:]))
+
+    data_array = X_vals[y_vals == 1]
+    samp_array = X_vals[y_vals == 0]
+    signal_array = data_array[data_array[:, -1] == 1]
+    if remove_signal:
+        data_array = data_array[data_array[:, -1] == 0]
+
+    n_features = data_array.shape[1]-2
+
+    if force_ranges is not None:
+        assert_msg = ("force_ranges needs to be list with the same length as "
+                      + "number of features (cond+aux)!")
+        assert len(force_ranges) == n_features, assert_msg
+        assert_msg = ("elements in force_range need to be tuples describing "
+                      + "the feature ranges in standardized representation "
+                      + "or None if no range should be enforced!")
+        for rng in force_ranges:
+            assert rng is None or len(rng) == 2, assert_msg
+    else:
+        force_ranges = [None for x in range(n_features)]
+
+    fig = plt.figure(figsize=(2.5*n_features, 2.5*n_features))
+    gs = gridspec.GridSpec(n_features*2, n_features*2)
+
+    # uniformizing plotting ranges
+    feature_ranges = []
+    for i in range(n_features):
+        if force_ranges[i] is None:
+            feature_range = (min(data_array[:, i]), max(data_array[:, i]))
+        else:
+            feature_range = force_ranges[i]
+        bin_length = (feature_range[1]-feature_range[0])/nbins
+        feature_ranges.append(
+            (feature_range[0]-0.5*bin_length, feature_range[1]+0.5*bin_length))
+
+    for i in range(n_features):
+        grid_row_number = 2*i
+        for j in range(n_features):
+            grid_col_number = 2*j
+
+            # separate legend
+            if i == 0 and j == 1:
+                plt.subplot(gs[grid_row_number:grid_row_number+2,
+                            grid_col_number:grid_col_number+2])
+                plt.plot(np.nan, np.nan, color=data_color,
+                         label=data_label)
+                plt.plot(np.nan, np.nan, color=sample_color,
+                         label=sample_label)
+                if draw_signal:
+                    plt.plot(np.nan, np.nan, color=signal_color,
+                             label="Signal")
+                ax = plt.gca()
+                ax.axis("off")
+                plt.legend(loc="center", frameon=False)
+
+            # only drawing half of symmetric correlation matrix
+            if j > i:
+                continue
+
+            plt.subplot(gs[grid_row_number:grid_row_number+2,
+                        grid_col_number:grid_col_number+2])
+
+            if i == j:
+                # marginal histograms
+                binning = np.linspace(
+                    feature_ranges[i][0], feature_ranges[i][1], nbins+1)
+
+                plt.hist(
+                    data_array[:, i], bins=binning, density=True,
+                    color=data_color, alpha=alpha)
+                if len(samp_array) != 0:
+                    plt.hist(
+                        samp_array[:, i], bins=binning, density=True,
+                        color=sample_color, alpha=alpha,
+                        histtype=sample_hist_type)
+                if draw_signal:
+                    plt.hist(
+                        signal_array[:, i], bins=binning, density=True,
+                        color=signal_color, alpha=alpha,
+                        histtype=sample_hist_type)
+                plt.xlim(feature_ranges[i])
+                plt.plot(np.nan, np.nan, linestyle="none", label="(marginal)")
+                plt.legend(loc="upper right", frameon=False)
+
+            else:
+                # 2D correlation contours
+                ybinning = np.linspace(
+                    feature_ranges[i][0], feature_ranges[i][1], nbins+1)
+                xbinning = np.linspace(
+                    feature_ranges[j][0], feature_ranges[j][1], nbins+1)
+
+                data_counts, xbinning, ybinning = np.histogram2d(
+                    data_array[:, j], data_array[:, i],
+                    bins=(xbinning, ybinning), normed=True)
+                extent = [*feature_ranges[j], *feature_ranges[i]]
+                plt.contour(data_counts.transpose(), colors=[data_color],
+                            extent=extent)
+                if len(samp_array) != 0:
+                    samp_counts, _, _ = np.histogram2d(
+                        samp_array[:, j], samp_array[:, i],
+                        bins=(xbinning, ybinning), normed=True)
+                    plt.contour(samp_counts.transpose(),
+                                colors=[sample_color], extent=extent)
+                if draw_signal:
+                    signal_counts, _, _ = np.histogram2d(
+                        signal_array[:, j], signal_array[:, i],
+                        bins=(xbinning, ybinning), normed=True)
+                    plt.contour(signal_counts.transpose(),
+                                colors=[signal_color], extent=extent)
+
+            # only showing labels at the border
+            if i == n_features-1:
+                if j == 0:
+                    plt.xlabel("cond feature")
+                else:
+                    plt.xlabel(f"aux feature {j}")
+            else:
+                ax = plt.gca()
+                ax.axes.xaxis.set_ticklabels([])
+            if j == 0:
+                if i == 0:
+                    plt.ylabel("Events (a.u.)")
+                else:
+                    plt.ylabel(f"aux feature {i}")
+            else:
+                ax = plt.gca()
+                ax.axes.yaxis.set_ticklabels([])
+
+    if title is not None:
+        plt.suptitle(title)
+    fig.tight_layout()
+
+    if savefig is not None:
+        plt.savefig(savefig+".pdf", bbox_inches="tight")
+    else:
+        plt.show()
