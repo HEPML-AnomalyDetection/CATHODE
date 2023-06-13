@@ -55,23 +55,10 @@ def main(args):
     print("cuda available:", CUDA)
     device = torch.device("cuda:0" if CUDA else "cpu")
 
-    # checking for data separation
-    data_files = os.listdir(args.data_dir)
-    if "innerdata_val.npy" in data_files:
-        finer_data_split = True
-    else:
-        finer_data_split = False
-
-    if finer_data_split:
-        innerdata_val_path = os.path.join(args.data_dir, 'innerdata_val.npy')
-    else:
-        innerdata_val_path = os.path.join(args.data_dir, 'innerdata_test.npy')
-
-    # data preprocessing
     data = LHCORD_data_handler(os.path.join(args.data_dir, 'innerdata_train.npy'),
-                               innerdata_val_path,
+                               os.path.join(args.data_dir, 'innerdata_val.npy'),
                                os.path.join(args.data_dir, 'outerdata_train.npy'),
-                               os.path.join(args.data_dir, 'outerdata_test.npy'),
+                               os.path.join(args.data_dir, 'outerdata_val.npy'),
                                None,
                                batch_size=args.batch_size,
                                device=device)

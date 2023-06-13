@@ -243,7 +243,7 @@ if __name__ == '__main__':
         training_DE_args = create_namespace_DE_training(args)
         if not args.DE_skip:
             train_DE(training_DE_args)
-        outer_best = find_best_epochs(training_DE_args, 10)
+        outer_best = find_best_epochs(training_DE_args, 1)
 
         print("  * * *  train inner density estimator  * * *  ")
         training_DE_args.inner_model = True

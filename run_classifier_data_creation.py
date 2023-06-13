@@ -76,52 +76,13 @@ def main(args):
     print("cuda available:", CUDA)
     device = torch.device("cuda:0" if CUDA else "cpu")
 
-    # checking for data separation
-    data_files = os.listdir(args.data_dir)
-    if "innerdata_val.npy" in data_files:
-        finer_data_split = True
-    else:
-        finer_data_split = False
-
-    if finer_data_split:
-        innerdata_train_path = [os.path.join(args.data_dir, 'innerdata_train.npy')]
-        innerdata_val_path = [os.path.join(args.data_dir, 'innerdata_val.npy')]
-        innerdata_test_path = [os.path.join(args.data_dir, 'innerdata_test.npy')]
-        if "innerdata_extrabkg_test.npy" in data_files:
-            innerdata_test_path.append(os.path.join(args.data_dir, 'innerdata_extrabkg_test.npy'))
-        extrasig_path = None
-        if args.supervised:
-            innerdata_train_path = []
-            innerdata_val_path = []
-            innerdata_train_path.append(os.path.join(args.data_dir, 'innerdata_extrasig_train.npy'))
-            innerdata_val_path.append(os.path.join(args.data_dir, 'innerdata_extrasig_val.npy'))
-            innerdata_train_path.append(os.path.join(args.data_dir, 'innerdata_extrabkg_train.npy'))
-            innerdata_val_path.append(os.path.join(args.data_dir, 'innerdata_extrabkg_val.npy'))
-            extra_bkg = None
-        elif args.idealized_AD:
-            extra_bkg = [os.path.join(args.data_dir, 'innerdata_extrabkg_train.npy'),
-                         os.path.join(args.data_dir, 'innerdata_extrabkg_val.npy')]
-        else:
-            extra_bkg = None
-
-    else:
-        innerdata_train_path = os.path.join(args.data_dir, 'innerdata_train.npy')
-        extrasig_path = os.path.join(args.data_dir, 'innerdata_extrasig.npy')
-        if args.extra_bkg:
-            extra_bkg = os.path.join(args.data_dir, 'innerdata_extrabkg.npy')
-        else:
-            extra_bkg = None
-        innerdata_val_path = None
-        innerdata_test_path = os.path.join(args.data_dir, 'innerdata_test.npy')
-
-    # data preprocessing
-    data = LHCORD_data_handler(innerdata_train_path,
-                               innerdata_test_path,
+    finer_data_split = True
+    extrasig_path = None
+    data = LHCORD_data_handler(os.path.join(args.data_dir, 'innerdata_train.npy'),
+                               os.path.join(args.data_dir, 'innerdata_val.npy'),
                                os.path.join(args.data_dir, 'outerdata_train.npy'),
-                               os.path.join(args.data_dir, 'outerdata_test.npy'),
-                               extrasig_path,
-                               inner_extrabkg_path=extra_bkg,
-                               inner_val_path=innerdata_val_path,
+                               os.path.join(args.data_dir, 'outerdata_val.npy'),
+                               None,
                                batch_size=256,
                                device=device)
     if args.datashift != 0:
@@ -168,10 +129,6 @@ def main(args):
         else:
             samples = None
 
-        # redo data preprocessing if the classifier should not use logit but ANODE did
-        data.preprocess_ANODE_data(fiducial_cut=args.fiducial_cut, no_logit=args.no_logit,
-                                   no_mean_shift=args.no_logit_trained)
-
         # sample preprocessing
         if not args.supervised and not args.idealized_AD:
             samples.preprocess_samples(fiducial_cut=args.fiducial_cut, no_logit=args.no_logit,
@@ -182,7 +139,8 @@ def main(args):
     X_train, y_train, X_test, y_test, X_extrasig, y_extrasig = mix_data_samples(
         data, samples_handler=samples, oversampling=args.oversampling,
         savedir=args.savedir, CWoLa=args.CWoLa, supervised=args.supervised,
-        idealized_AD=args.idealized_AD, separate_val_set=args.separate_val_set or finer_data_split)
+        idealized_AD=args.idealized_AD, separate_val_set=args.separate_val_set or finer_data_split,
+        model=model_list[0])
 
     # sanity checks
     if not args.CWoLa and not args.supervised and not args.idealized_AD:
