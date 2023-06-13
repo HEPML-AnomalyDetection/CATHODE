@@ -969,6 +969,14 @@ def logit_transform(data, datamax, datamin, domain_cut=False, fiducial_cut=False
 
     data3 = data2[mask]
     data4 = torch.log((data3)/(1-data3))
+
+    for idx in range(data4.shape[1]):
+        if torch.isinf(data4[:, idx]).any():
+            no_inf_max = torch.max(data4[~torch.isinf(data4[:, idx]), idx])
+            no_inf_min = torch.min(data4[~torch.isinf(data4[:, idx]), idx])
+            data4[data4[:, idx]==np.inf, idx] = no_inf_max
+            data4[data4[:, idx]==-np.inf, idx] = no_inf_min
+
     return data4, mask
 
 
