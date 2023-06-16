@@ -417,7 +417,7 @@ def plot_data_sample_comparison(X_vals, y_vals, nbins=50, alpha=0.5,
                                 remove_signal=True, signal_color=None,
                                 force_ranges=None, logit_trsf=False):
     # Sanity check plot comparing data and samples before running
-    # the classifier. In version it also comes with 2D correlation
+    # the classifier. This version also comes with 2D correlation
     # contours. One can also provide a list of forced ranges to
     # track down problems in hindsight.
 
