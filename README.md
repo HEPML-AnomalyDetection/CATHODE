@@ -6,7 +6,9 @@ To see the definition of signal region and sideband region please see: [SB-SR](S
 
 ![performance comparison](performance_comparison.png)
 
-Follow the instructions below to reproduce the results and/or perform further studies. The steps "Train the ANODE model", "Mix data and samples", "Train the classifier", and "Evaluation" can be called separately as described below. Alternatively, the script `run_all.py` can be used to run the full pipeline in one call.
+*Note: This repo serves to reproduce the results from the CATHODE paper. Meanwhile, a more easy-to-use code base, to illustrate and adopt CATHODE for own projects, has been set up [here](https://github.com/uhh-pd-ml/sk_cathode)*.
+
+Follow the instructions below to reproduce the results. The steps "Train the ANODE model", "Mix data and samples", "Train the classifier", and "Evaluation" can be called separately as described below. Alternatively, the script `run_all.py` can be used to run the full pipeline in one call.
 
 ## Citation
 If you use **CATHODE** for your research, please cite:  
