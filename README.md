@@ -2,6 +2,8 @@
 
 Code base for the paper [Resonant anomaly detection without background sculpting](https://arxiv.org/abs/2210.14924).
 
+*Note: This repo serves to reproduce the results from the LaCATHODE paper. Meanwhile, a more easy-to-use code base, to illustrate and adopt (La)CATHODE for own projects, has been set up [here](https://github.com/uhh-pd-ml/sk_cathode)*.
+
 LatentCATHODE (LaCATHODE) is a new anomaly detection algorithm that tightly follows the [CATHODE protocol](https://arxiv.org/abs/2109.00546) but moves the classification task into the latent space of the normalizing flow. Since the flow has been trained to map sideband events to a unit normal distribution for every conditional mass value, the input to the classifier is decorrelated from the mass. Evaluating the signal region–trained classifier on the sideband region thus does not lead to a sculpted background distribution as is observed in other weakly supervised approaches.
 
 To see the definition of signal region and sideband region please see: [SB-SR](SB-SR.pdf)
